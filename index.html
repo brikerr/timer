@@ -94,6 +94,20 @@
     .div-h { top: 50%; left: 0; right: 0; height: 0; transform: translateY(-50%); border-top: 1px solid var(--div); }
     .div-v { left: 50%; top: 0; bottom: 0; width: 0; transform: translateX(-50%); border-left: 1px solid var(--div); }
 
+    /* ── HORIZONTAL LAYOUT ──────────────────────── */
+    body.horizontal .grid {
+      grid-template-columns: repeat(4, 1fr);
+      grid-template-rows: 1fr;
+    }
+    body.horizontal .cell {
+      font-size: min(22vw, 80vh);
+    }
+    body.horizontal .div-h { display: none; }
+    body.horizontal .div-v { display: none; }
+    body.horizontal .cell { border-right: 1px solid var(--div); transition: color .7s, font-weight 1s, font-style .55s, border-color .7s; }
+    body.horizontal .cell:last-child { border-right: none; }
+    body.horizontal .rlabel { display: none; }
+
     /* Urgency — italic at 60s, heavy italic at 10s */
     body.urg  .cell { color: var(--accent); font-style: italic; }
     body.crit .cell { color: var(--accent); font-style: italic; font-weight: 900; }
@@ -228,6 +242,16 @@
           <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
           <line x1="23" y1="9" x2="17" y2="15"/>
           <line x1="17" y1="9" x2="23" y2="15"/>
+        </svg>
+      </button>
+      <button id="layoutBtn" class="icon-btn" title="Toggle layout  (L)">
+        <svg id="iGrid" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+          <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/>
+        </svg>
+        <svg id="iRow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+          <rect x="2" y="6" width="4" height="12"/><rect x="8" y="6" width="4" height="12"/>
+          <rect x="14" y="6" width="4" height="12"/><rect x="20" y="6" width="4" height="12"/>
         </svg>
       </button>
       <div class="pip"></div>
@@ -409,12 +433,22 @@
   }
   document.getElementById('audioBtn').addEventListener('click', () => { audioOn = !audioOn; applyAudio(); });
 
+  /* ── LAYOUT TOGGLE ───────────────────────── */
+  let horizontal = false;
+  function applyLayout() {
+    document.body.classList.toggle('horizontal', horizontal);
+    document.getElementById('iGrid').style.display = horizontal ? 'none' : '';
+    document.getElementById('iRow').style.display  = horizontal ? ''     : 'none';
+  }
+  document.getElementById('layoutBtn').addEventListener('click', () => { horizontal = !horizontal; applyLayout(); });
+
   document.addEventListener('keydown', e => {
     if (e.target.tagName === 'INPUT') return;
     if (e.code === 'Space') { e.preventDefault(); startBtn.click(); }
     if (e.code === 'KeyR')  resetTimer();
     if (e.code === 'KeyD')  { dark = !dark; applyMode(); }
     if (e.code === 'KeyM')  { audioOn = !audioOn; applyAudio(); }
+    if (e.code === 'KeyL')  { horizontal = !horizontal; applyLayout(); }
   });
 
   render(rem);
