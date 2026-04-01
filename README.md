@@ -4,7 +4,7 @@ A minimal, typographically-driven countdown timer built as a single self-contain
 
 ## How It Works
 
-Open `timer.html` in any modern browser — no build step, no dependencies, no server required.
+Open `index.html` in any modern browser — no build step, no dependencies, no server required.
 
 ### Display
 
@@ -64,7 +64,7 @@ Supports light and dark themes. Defaults to the system preference and can be tog
 
 ## How It's Built
 
-The entire application is a single `timer.html` file (~400 lines) with no external dependencies beyond two Google Fonts:
+The entire application is a single `index.html` file (~400 lines) with no external dependencies beyond two Google Fonts:
 
 - **Playfair Display** (serif) — used for the large digit display and time inputs
 - **Karla** (sans-serif) — used for labels, buttons, and UI controls
