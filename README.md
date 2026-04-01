@@ -1,6 +1,6 @@
 # Timer
 
-A minimal, typographically-driven countdown timer built as a single self-contained HTML file. Designed for focused work sessions (sprints, pomodoros, timeboxing), it displays time remaining as four large digits in a 2x2 grid layout.
+A minimal, typographically-driven countdown timer built as a single self-contained HTML file. Designed for focused work sessions (sprints, pomodoros, timeboxing), it displays time remaining as four large digits with a choice of two responsive layouts.
 
 ## How It Works
 
@@ -8,7 +8,9 @@ Open `index.html` in any modern browser — no build step, no dependencies, no s
 
 ### Display
 
-The timer splits minutes and seconds into four individual digits arranged in a quadrant grid:
+The timer splits minutes and seconds into four individual digits. Two responsive layouts are available, toggled via the layout button or the `L` key:
+
+**Grid (default)** — 2x2 quadrant:
 
 ```
  ┌───────┬───────┐
@@ -22,7 +24,17 @@ The timer splits minutes and seconds into four individual digits arranged in a q
  └───────┴───────┘
 ```
 
-Digits animate with a blur/scale morph transition when they change. A thin progress bar runs along the top of the viewport.
+**Horizontal** — single row:
+
+```
+ ┌────┬────┬────┬────┐
+ │    │    │    │    │
+ │ 0  │ 5  │ 0  │ 0  │
+ │    │    │    │    │
+ └────┴────┴────┴────┘
+```
+
+Both layouts scale responsively to the browser window. Digits animate with a blur/scale morph transition when they change. A thin progress bar runs along the top of the viewport.
 
 ### Controls
 
@@ -41,6 +53,7 @@ The control bar sits at the bottom of the screen and fades out while the timer i
 | `R`     | Reset               |
 | `D`     | Toggle dark mode    |
 | `M`     | Toggle audio on/off |
+| `L`     | Toggle layout       |
 
 ### Urgency Cues
 
@@ -76,7 +89,7 @@ Everything lives inline — HTML structure, CSS, and JavaScript are all in one f
 
 - **CSS custom properties** define a token system (`--bg`, `--fg`, `--accent`, etc.) with a `.dark` variant on `:root`, enabling theme switching by toggling a single class
 - **Visual texture** is added through a radial vignette (`body::before`) and SVG-based film grain (`body::after`) — both purely decorative CSS layers
-- **Layout** uses CSS Grid for the four-quadrant digit display and flexbox for the control bar
+- **Layout** uses CSS Grid for the digit display (2x2 or 1x4) and flexbox for the control bar, with responsive `min()` font sizing for each mode
 - **Timer logic** is a straightforward `setInterval` at 1-second resolution, tracking `total` and `rem` (remaining) seconds
 - **Digit morphing** triggers a CSS keyframe animation (`luxBloom`) that blurs and scales the digit out, swaps the text content at the midpoint, then animates back in
 - **Audio synthesis** creates oscillator nodes on the fly via the Web Audio API — each sound is a short function composing `tone()` calls with frequency, waveform, duration, gain, and delay parameters
