@@ -1,4 +1,4 @@
-# Sprint Timer
+# Timer
 
 A minimal, typographically-driven countdown timer built as a single self-contained HTML file. Designed for focused work sessions (sprints, pomodoros, timeboxing), it displays time remaining as four large digits in a 2x2 grid layout.
 
