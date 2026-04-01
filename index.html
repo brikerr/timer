@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Timer</title>
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' fill='none' stroke='%23000' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='32' cy='36' r='22'/%3E%3Cline x1='32' y1='36' x2='32' y2='22'/%3E%3Cline x1='32' y1='36' x2='42' y2='36'/%3E%3Cline x1='26' y1='8' x2='38' y2='8'/%3E%3Cline x1='32' y1='8' x2='32' y2='14'/%3E%3Cline x1='48' y1='18' x2='52' y2='14'/%3E%3C/svg%3E">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700;1,900&family=Karla:wght@300;400;500&display=swap" rel="stylesheet">
@@ -136,16 +137,16 @@
 
     .pip { width: 1px; height: 18px; background: var(--div); flex-shrink: 0; transition: background .7s; }
 
-    /* Mode toggle */
-    #modeBtn {
+    /* Icon toggles */
+    .icon-btn {
       width: 28px; height: 28px; border: none; cursor: pointer;
       background: transparent; padding: 0; flex-shrink: 0;
       display: flex; align-items: center; justify-content: center;
       color: var(--muted); opacity: .55;
       transition: color .3s, opacity .2s;
     }
-    #modeBtn:hover { opacity: 1; color: var(--fg); }
-    #modeBtn svg   { width: 14px; height: 14px; }
+    .icon-btn:hover { opacity: 1; color: var(--fg); }
+    .icon-btn svg   { width: 14px; height: 14px; }
 
     .presets { display: flex; gap: 4px; }
     .preset {
@@ -203,7 +204,7 @@
 
   <div id="ctrl">
     <div class="lgroup">
-      <button id="modeBtn" title="Light / dark  (D)">
+      <button id="modeBtn" class="icon-btn" title="Light / dark  (D)">
         <svg id="iSun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round">
           <circle cx="12" cy="12" r="4.5"/>
           <line x1="12" y1="2"  x2="12" y2="4"/>    <line x1="12" y1="20" x2="12" y2="22"/>
@@ -215,6 +216,18 @@
         </svg>
         <svg id="iMoon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" style="display:none">
           <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+      </button>
+      <button id="audioBtn" class="icon-btn" title="Toggle audio  (M)">
+        <svg id="iVolOn" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+          <path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
+        </svg>
+        <svg id="iVolOff" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+          <line x1="23" y1="9" x2="17" y2="15"/>
+          <line x1="17" y1="9" x2="23" y2="15"/>
         </svg>
       </button>
       <div class="pip"></div>
@@ -244,7 +257,7 @@
   const sIn      = document.getElementById('sIn');
   const startBtn = document.getElementById('startBtn');
 
-  let total=300, rem=300, running=false, tid=null, ac=null;
+  let total=300, rem=300, running=false, tid=null, ac=null, audioOn=true;
 
   /* ── AUDIO ────────────────────────────────── */
   function initAC() {
@@ -252,7 +265,7 @@
     if (ac.state === 'suspended') ac.resume();
   }
   function tone(freq, type='sine', dur=0.7, gain=0.12, delay=0) {
-    if (!ac) return;
+    if (!ac || !audioOn) return;
     try {
       const t = ac.currentTime + delay;
       const o = ac.createOscillator(), g = ac.createGain();
@@ -389,11 +402,19 @@
   applyMode();
   document.getElementById('modeBtn').addEventListener('click', () => { dark = !dark; applyMode(); });
 
+  /* ── AUDIO TOGGLE ────────────────────────── */
+  function applyAudio() {
+    document.getElementById('iVolOn').style.display  = audioOn ? '' : 'none';
+    document.getElementById('iVolOff').style.display = audioOn ? 'none' : '';
+  }
+  document.getElementById('audioBtn').addEventListener('click', () => { audioOn = !audioOn; applyAudio(); });
+
   document.addEventListener('keydown', e => {
     if (e.target.tagName === 'INPUT') return;
     if (e.code === 'Space') { e.preventDefault(); startBtn.click(); }
     if (e.code === 'KeyR')  resetTimer();
     if (e.code === 'KeyD')  { dark = !dark; applyMode(); }
+    if (e.code === 'KeyM')  { audioOn = !audioOn; applyAudio(); }
   });
 
   render(rem);
