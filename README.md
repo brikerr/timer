@@ -40,6 +40,7 @@ The control bar sits at the bottom of the screen and fades out while the timer i
 | `Space` | Start / Pause       |
 | `R`     | Reset               |
 | `D`     | Toggle dark mode    |
+| `M`     | Toggle audio on/off |
 
 ### Urgency Cues
 
@@ -51,7 +52,7 @@ As time runs low, the display shifts to communicate urgency:
 
 ### Audio
 
-Sound is generated entirely with the Web Audio API (no audio files). Effects include:
+Sound is generated entirely with the Web Audio API (no audio files). Audio is on by default and can be muted via the speaker button or the `M` key. Effects include:
 
 - A three-tone chord on start
 - A single tone on each minute boundary
