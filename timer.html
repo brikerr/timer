@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sprint Timer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700;1,900&family=Karla:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { width: 100%; height: 100%; overflow: hidden; }
+
+    /* ── TOKENS ─────────────────────────────────── */
+    :root {
+      --bg:        #F6F0E4;
+      --fg:        #1A1410;
+      --muted:     #9A8060;
+      --accent:    #7A4F2A;
+      --soft:      #C4A87A;
+      --div:       rgba(150,120,80,0.3);
+      --ctrl-bg:   rgba(246,240,228,0.97);
+      --vgn:       rgba(210,190,155,0.48);
+      --grain:     0.022;
+    }
+    :root.dark {
+      --bg:        #100E09;
+      --fg:        #EDE0C4;
+      --muted:     #7A6A4A;
+      --accent:    #C8904A;
+      --soft:      #3A2C14;
+      --div:       rgba(200,144,74,0.18);
+      --ctrl-bg:   rgba(10,9,6,0.96);
+      --vgn:       rgba(0,0,0,0.62);
+      --grain:     0.05;
+    }
+
+    body {
+      background-color: var(--bg);
+      transition: background-color .7s ease;
+    }
+
+    /* Radial vignette */
+    body::before {
+      content: ''; position: fixed; inset: 0; z-index: 0; pointer-events: none;
+      background: radial-gradient(ellipse at 50% 48%, transparent 20%, var(--vgn) 100%);
+    }
+
+    /* Film grain */
+    body::after {
+      content: ''; position: fixed; inset: 0; z-index: 4; pointer-events: none;
+      opacity: var(--grain);
+      transition: opacity .7s ease;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23g)'/%3E%3C/svg%3E");
+      background-size: 256px 256px;
+    }
+
+    /* ── FOUR-QUADRANT GRID ─────────────────────── */
+    .grid {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      bottom: 54px; /* clear the controls bar */
+      z-index: 2;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+    }
+
+    .cell {
+      display: flex; align-items: center; justify-content: center;
+      /* no overflow:hidden — let font-size do the work */
+      font-family: 'Playfair Display', serif;
+      font-weight: 400;
+      /* each cell is (100vh - 54px) / 2 tall;
+         font-size capped at 42vh keeps digits fully inside */
+      font-size: min(38vw, 42vh);
+      line-height: 1; color: var(--fg);
+      user-select: none; cursor: default;
+      transition: color .7s, font-weight 1s, font-style .55s;
+    }
+
+    .cell.morphing { animation: luxBloom 350ms ease both; }
+    @keyframes luxBloom {
+      0%   { opacity: 1; transform: scale(1)    translateY(0);    filter: blur(0); }
+      38%  { opacity: 0; transform: scale(.875) translateY(-8px); filter: blur(7px); }
+      62%  { opacity: 0; transform: scale(.875) translateY(8px);  filter: blur(7px); }
+      100% { opacity: 1; transform: scale(1)    translateY(0);    filter: blur(0); }
+    }
+
+    /* Crosshair dividers */
+    .div-h, .div-v { position: fixed; pointer-events: none; z-index: 10; transition: border-color .7s; }
+    .div-h { top: 50%; left: 0; right: 0; height: 0; transform: translateY(-50%); border-top: 1px solid var(--div); }
+    .div-v { left: 50%; top: 0; bottom: 0; width: 0; transform: translateX(-50%); border-left: 1px solid var(--div); }
+
+    /* Urgency — italic at 60s, heavy italic at 10s */
+    body.urg  .cell { color: var(--accent); font-style: italic; }
+    body.crit .cell { color: var(--accent); font-style: italic; font-weight: 900; }
+    body.done .cell { animation: doneFlash .6s ease-in-out 3; }
+    @keyframes doneFlash { 0%,100% { opacity: 1; } 50% { opacity: .1; } }
+
+    /* Progress bar */
+    #pgBar {
+      position: fixed; top: 0; left: 0;
+      height: 2px; width: 0%;
+      background: var(--accent); z-index: 100;
+      transition: width 1s linear, background .7s ease;
+    }
+
+    /* Row labels */
+    .rlabel {
+      position: fixed; right: 18px; z-index: 90;
+      font-family: 'Karla', sans-serif; font-size: 8px; font-weight: 500;
+      letter-spacing: .26em; text-transform: uppercase; writing-mode: vertical-rl;
+      color: var(--muted); opacity: .2; transition: color .7s;
+    }
+    .rlabel.m { top: 22px; }
+    .rlabel.s { top: calc(50vh + 22px); }
+
+    /* ── CONTROLS ───────────────────────────────── */
+    #ctrl {
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 90;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 14px 24px;
+      background: var(--ctrl-bg);
+      backdrop-filter: blur(24px) saturate(1.5);
+      -webkit-backdrop-filter: blur(24px) saturate(1.5);
+      border-top: 1px solid var(--div);
+      transition: opacity .5s, background .7s, border-color .7s;
+    }
+    #ctrl.faded       { opacity: .05; }
+    #ctrl.faded:hover { opacity: 1; }
+
+    .lgroup { display: flex; align-items: center; gap: 14px; }
+    .rgroup { display: flex; align-items: center; gap: 8px; }
+
+    .pip { width: 1px; height: 18px; background: var(--div); flex-shrink: 0; transition: background .7s; }
+
+    /* Mode toggle */
+    #modeBtn {
+      width: 28px; height: 28px; border: none; cursor: pointer;
+      background: transparent; padding: 0; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--muted); opacity: .55;
+      transition: color .3s, opacity .2s;
+    }
+    #modeBtn:hover { opacity: 1; color: var(--fg); }
+    #modeBtn svg   { width: 14px; height: 14px; }
+
+    .presets { display: flex; gap: 4px; }
+    .preset {
+      font-family: 'Karla', sans-serif; font-size: 9px; font-weight: 500;
+      letter-spacing: .14em; text-transform: uppercase;
+      padding: 5px 12px; background: transparent; cursor: pointer;
+      border: 1px solid var(--div); color: var(--muted);
+      transition: color .2s, border-color .2s, transform .1s;
+    }
+    .preset:hover  { color: var(--fg); border-color: var(--soft); }
+    .preset:active { transform: scale(.95); }
+    .preset.sel    { color: var(--accent); border-color: var(--accent); }
+
+    .cinput { display: flex; align-items: center; gap: 3px; }
+    .tf {
+      font-family: 'Playfair Display', serif; font-size: 17px; font-weight: 400;
+      background: transparent; border: none; border-bottom: 1px solid var(--soft);
+      width: 2.5em; text-align: center; padding: 1px 2px 4px; outline: none;
+      color: var(--fg); -moz-appearance: textfield; appearance: textfield;
+      transition: color .7s, border-color .3s;
+    }
+    .tf::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .tf:focus { border-bottom-color: var(--accent); }
+    .tsep { font-family: 'Playfair Display', serif; font-size: 17px; color: var(--muted); transition: color .7s; }
+
+    .btn {
+      font-family: 'Karla', sans-serif; font-size: 10px; font-weight: 500;
+      letter-spacing: .18em; text-transform: uppercase;
+      padding: 8px 22px; border: none; cursor: pointer;
+      transition: background .2s, color .2s, transform .1s;
+    }
+    .btn:active { transform: scale(.96); }
+    .btn-p { background: var(--fg); color: var(--bg); }
+    .btn-p:hover { background: var(--accent); color: #fff; }
+    .btn-g { background: transparent; color: var(--muted); border: 1px solid var(--div); transition: color .2s, border-color .2s, transform .1s; }
+    .btn-g:hover { color: var(--fg); border-color: var(--muted); }
+
+  </style>
+</head>
+<body>
+
+  <div class="grid">
+    <div class="cell" id="c0">0</div>
+    <div class="cell" id="c1">5</div>
+    <div class="cell" id="c2">0</div>
+    <div class="cell" id="c3">0</div>
+  </div>
+
+  <div class="div-h"></div>
+  <div class="div-v"></div>
+  <div id="pgBar"></div>
+
+  <div class="rlabel m">min</div>
+  <div class="rlabel s">sec</div>
+
+  <div id="ctrl">
+    <div class="lgroup">
+      <button id="modeBtn" title="Light / dark  (D)">
+        <svg id="iSun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round">
+          <circle cx="12" cy="12" r="4.5"/>
+          <line x1="12" y1="2"  x2="12" y2="4"/>    <line x1="12" y1="20" x2="12" y2="22"/>
+          <line x1="4.22" y1="4.22"   x2="5.64"  y2="5.64"/>
+          <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+          <line x1="2"  y1="12" x2="4"  y2="12"/>   <line x1="20" y1="12" x2="22" y2="12"/>
+          <line x1="4.22"  y1="19.78" x2="5.64"  y2="18.36"/>
+          <line x1="18.36" y1="5.64"  x2="19.78" y2="4.22"/>
+        </svg>
+        <svg id="iMoon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" style="display:none">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+        </svg>
+      </button>
+      <div class="pip"></div>
+      <div class="presets">
+        <button class="preset" data-m="5"  data-s="0">5 min</button>
+        <button class="preset" data-m="10" data-s="0">10 min</button>
+        <button class="preset" data-m="25" data-s="0">25 min</button>
+      </div>
+      <div class="pip"></div>
+      <div class="cinput">
+        <input type="number" class="tf" id="mIn" value="05" min="0" max="99">
+        <span class="tsep">:</span>
+        <input type="number" class="tf" id="sIn" value="00" min="0" max="59">
+      </div>
+    </div>
+    <div class="rgroup">
+      <button class="btn btn-p" id="startBtn">Start</button>
+      <button class="btn btn-g" id="resetBtn">Reset</button>
+    </div>
+  </div>
+
+  <script>
+  const cells    = ['c0','c1','c2','c3'].map(id => document.getElementById(id));
+  const ctrl     = document.getElementById('ctrl');
+  const pgBar    = document.getElementById('pgBar');
+  const mIn      = document.getElementById('mIn');
+  const sIn      = document.getElementById('sIn');
+  const startBtn = document.getElementById('startBtn');
+
+  let total=300, rem=300, running=false, tid=null, ac=null;
+
+  /* ── AUDIO ────────────────────────────────── */
+  function initAC() {
+    if (!ac) ac = new (window.AudioContext || window.webkitAudioContext)();
+    if (ac.state === 'suspended') ac.resume();
+  }
+  function tone(freq, type='sine', dur=0.7, gain=0.12, delay=0) {
+    if (!ac) return;
+    try {
+      const t = ac.currentTime + delay;
+      const o = ac.createOscillator(), g = ac.createGain();
+      o.connect(g); g.connect(ac.destination);
+      o.type = type; o.frequency.setValueAtTime(freq, t);
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(gain, t + .012);
+      g.gain.exponentialRampToValueAtTime(.001, t + dur);
+      o.start(t); o.stop(t + dur + .05);
+    } catch(e) {}
+  }
+  const sndStart  = () => { tone(523.25,'sine',1.0,.12); tone(659.25,'sine',.8,.07,.06); tone(783.99,'sine',.6,.05,.14); };
+  const sndMinute = ()  => tone(698.46, 'sine', 1.1, .10);
+  const sndPulse  = n   => tone(440 + (10-n)*22, 'sine', .15, .10);
+  const sndDone   = ()  => [523.25,659.25,783.99,1046.5].forEach((f,i) => tone(f,'sine',1.1-i*.12,.13,i*.22));
+
+  /* ── DIGIT MORPH ──────────────────────────── */
+  function setCell(el, ch) {
+    if (el.textContent === ch) return;
+    el.classList.remove('morphing');
+    void el.offsetWidth;
+    el.classList.add('morphing');
+    setTimeout(() => { el.textContent = ch; }, 165);
+    setTimeout(() => { el.classList.remove('morphing'); }, 370);
+  }
+
+  function render(s) {
+    const m = Math.floor(s/60), sc = s%60;
+    [Math.floor(m/10), m%10, Math.floor(sc/10), sc%10]
+      .map(String).forEach((c,i) => setCell(cells[i], c));
+    if (total > 0) pgBar.style.width = ((total-s)/total*100) + '%';
+    document.body.classList.toggle('urg',  s <= 60 && s > 10);
+    document.body.classList.toggle('crit', s <= 10 && s > 0);
+    document.body.classList.remove('done');
+  }
+
+  /* ── TIMER ────────────────────────────────── */
+  function tick() {
+    if (rem <= 0) { onDone(); return; }
+    rem--;
+    render(rem);
+    if (rem > 0 && rem % 60 === 0) sndMinute();
+    if (rem > 0 && rem <= 10)      sndPulse(rem);
+  }
+  function onDone() {
+    clearInterval(tid); tid=null; running=false; rem=0; render(0);
+    document.body.classList.add('done');
+    ctrl.classList.remove('faded');
+    startBtn.textContent = 'Start';
+    initAC(); sndDone();
+  }
+  function startTimer() {
+    initAC();
+    const m = Math.max(0, Math.min(99, parseInt(mIn.value)||0));
+    const s = Math.max(0, Math.min(59, parseInt(sIn.value)||0));
+    total = m*60+s; if (!total) return;
+    rem=total; running=true;
+    document.body.classList.remove('done','urg','crit');
+    ctrl.classList.add('faded');
+    startBtn.textContent = 'Pause';
+    pgBar.style.transition = 'none'; pgBar.style.width = '0%';
+    void pgBar.offsetWidth;
+    pgBar.style.transition = 'width 1s linear';
+    render(rem); sndStart();
+    tid = setInterval(tick, 1000);
+  }
+  function pauseTimer() {
+    clearInterval(tid); tid=null; running=false;
+    ctrl.classList.remove('faded');
+    startBtn.textContent = 'Resume';
+  }
+  function resumeTimer() {
+    initAC(); if (rem <= 0) return;
+    running=true; ctrl.classList.add('faded');
+    startBtn.textContent = 'Pause';
+    tid = setInterval(tick, 1000);
+  }
+  function resetTimer() {
+    clearInterval(tid); tid=null; running=false;
+    const m = Math.max(0, Math.min(99, parseInt(mIn.value)||0));
+    const s = Math.max(0, Math.min(59, parseInt(sIn.value)||0));
+    total=m*60+s; rem=total; render(rem);
+    document.body.classList.remove('done','urg','crit');
+    ctrl.classList.remove('faded');
+    startBtn.textContent = 'Start';
+    pgBar.style.width = '0%';
+    document.querySelectorAll('.preset').forEach(b => b.classList.remove('sel'));
+  }
+
+  /* ── PRESETS ──────────────────────────────── */
+  document.querySelectorAll('.preset').forEach(btn => {
+    btn.addEventListener('click', () => {
+      if (running) return;
+      const m = parseInt(btn.dataset.m), s = parseInt(btn.dataset.s);
+      mIn.value = String(m).padStart(2,'0');
+      sIn.value = String(s).padStart(2,'0');
+      total=m*60+s; rem=total; render(rem);
+      document.body.classList.remove('done','urg','crit');
+      document.querySelectorAll('.preset').forEach(b => b.classList.remove('sel'));
+      btn.classList.add('sel');
+      startBtn.textContent = 'Start'; pgBar.style.width = '0%';
+    });
+  });
+
+  /* ── INPUTS ───────────────────────────────── */
+  [mIn, sIn].forEach(f => {
+    f.addEventListener('blur', () => {
+      const max = f===mIn ? 99 : 59;
+      const v = Math.max(0, Math.min(max, parseInt(f.value)||0));
+      f.value = String(v).padStart(2,'0');
+      if (!running && !tid) {
+        total = (parseInt(mIn.value)||0)*60 + (parseInt(sIn.value)||0);
+        rem = total; render(rem);
+        document.querySelectorAll('.preset').forEach(b => b.classList.remove('sel'));
+      }
+    });
+    f.addEventListener('keydown', e => { if (e.key==='Enter') { f.blur(); startTimer(); } });
+  });
+
+  startBtn.addEventListener('click', () => {
+    if (!running && rem>0 && tid===null && startBtn.textContent!=='Start') resumeTimer();
+    else if (!running) startTimer();
+    else pauseTimer();
+  });
+  document.getElementById('resetBtn').addEventListener('click', resetTimer);
+
+  /* ── DARK MODE ────────────────────────────── */
+  let dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  function applyMode() {
+    document.documentElement.classList.toggle('dark', dark);
+    document.getElementById('iSun').style.display  = dark ? 'none' : '';
+    document.getElementById('iMoon').style.display = dark ? ''     : 'none';
+  }
+  applyMode();
+  document.getElementById('modeBtn').addEventListener('click', () => { dark = !dark; applyMode(); });
+
+  document.addEventListener('keydown', e => {
+    if (e.target.tagName === 'INPUT') return;
+    if (e.code === 'Space') { e.preventDefault(); startBtn.click(); }
+    if (e.code === 'KeyR')  resetTimer();
+    if (e.code === 'KeyD')  { dark = !dark; applyMode(); }
+  });
+
+  render(rem);
+  </script>
+</body>
+</html>
